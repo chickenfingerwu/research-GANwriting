@@ -4,7 +4,7 @@ import random
 import string
 import cv2
 import numpy as np
-from pairs_idx_wid_iam import wid2label_tr, wid2label_te
+from pairs_idx_wid_etl import wid2label_tr, wid2label_te
 
 CREATE_PAIRS = False
 
@@ -19,14 +19,14 @@ NORMAL = True
 OUTPUT_MAX_LEN = MAX_CHARS+2 # <GO>+groundtruth+<END>
 
 '''The folder of IAM word images, please change to your own one before run it!!'''
-img_base = '/home/lkang/datasets/iam_final_forms/words_from_forms/'
-text_corpus = 'corpora_english/brown-azAZ.tr'
+img_base = '/home/lkang/datasets/ETL_7_and_9/'
+text_corpus = 'kanji.txt'
 
 with open(text_corpus, 'r') as _f:
     text_corpus = _f.read().split()
 
-src = 'Groundtruth/gan.iam.tr_va.gt.filter27'
-tar = 'Groundtruth/gan.iam.test.gt.filter27'
+src = 'Groundtruth/label_train.txt'
+tar = 'Groundtruth/label_test.txt'
 
 def labelDictionary():
     labels = list(string.ascii_lowercase + string.ascii_uppercase)
