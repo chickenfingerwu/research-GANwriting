@@ -8,18 +8,18 @@ from pairs_idx_wid_etl import wid2label_tr, wid2label_te
 
 CREATE_PAIRS = False
 
-IMG_HEIGHT = 64
-IMG_WIDTH = 216
-MAX_CHARS = 10
+IMG_HEIGHT = 128
+IMG_WIDTH = 127
+MAX_CHARS = 1
 # NUM_CHANNEL = 15
 NUM_CHANNEL = 50
-EXTRA_CHANNEL = NUM_CHANNEL+1
-NUM_WRITERS = 500 # iam
+EXTRA_CHANNEL = NUM_CHANNEL + 1
+NUM_WRITERS = 2  # etl
 NORMAL = True
-OUTPUT_MAX_LEN = MAX_CHARS+2 # <GO>+groundtruth+<END>
+OUTPUT_MAX_LEN = MAX_CHARS + 2  # <GO>+groundtruth+<END>
 
 '''The folder of IAM word images, please change to your own one before run it!!'''
-img_base = '/home/lkang/datasets/ETL_7_and_9/'
+img_base = '/content/research-GANwriting/datasets/ETL_7_and_9'
 text_corpus = 'kanji.txt'
 
 with open(text_corpus, 'r') as _f:
@@ -28,25 +28,37 @@ with open(text_corpus, 'r') as _f:
 src = 'Groundtruth/label_train.txt'
 tar = 'Groundtruth/label_test.txt'
 
+
+# def labelDictionary():
+#     labels = list(string.ascii_lowercase + string.ascii_uppercase)
+#     letter2index = {label: n for n, label in enumerate(labels)}
+#     index2letter = {v: k for k, v in letter2index.items()}
+#     return len(labels), letter2index, index2letter
+
 def labelDictionary():
-    labels = list(string.ascii_lowercase + string.ascii_uppercase)
+    labels = set()
+    with open('kanji.txt', 'r') as r:
+        for char in r.read():
+            labels.add(char.strip())
     letter2index = {label: n for n, label in enumerate(labels)}
     index2letter = {v: k for k, v in letter2index.items()}
     return len(labels), letter2index, index2letter
+
 
 num_classes, letter2index, index2letter = labelDictionary()
 tokens = {'GO_TOKEN': 0, 'END_TOKEN': 1, 'PAD_TOKEN': 2}
 num_tokens = len(tokens.keys())
 vocab_size = num_classes + num_tokens
 
+
 def edits1(word, min_len=2, max_len=MAX_CHARS):
     "All edits that are one edit away from `word`."
     letters = list(string.ascii_lowercase)
-    splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
-    deletes    = [L + R[1:]               for L, R in splits if R]
-    transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
-    replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
-    inserts    = [L + c + R               for L, R in splits for c in letters]
+    splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+    deletes = [L + R[1:] for L, R in splits if R]
+    transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R) > 1]
+    replaces = [L + c + R[1:] for L, R in splits if R for c in letters]
+    inserts = [L + c + R for L, R in splits for c in letters]
     if len(word) <= min_len:
         return random.choice(list(set(transposes + replaces + inserts)))
     elif len(word) >= max_len:
@@ -66,7 +78,7 @@ class IAM_words(D.Dataset):
         word = word_ori.copy()
         start = word.index(tokens['GO_TOKEN'])
         fin = word.index(tokens['END_TOKEN'])
-        word = ''.join([index2letter[i-num_tokens] for i in word[start+1: fin]])
+        word = ''.join([index2letter[i - num_tokens] for i in word[start + 1: fin]])
         new_word = edits1(word)
         label = np.array(self.label_padding(new_word, num_tokens))
         return label
@@ -81,7 +93,6 @@ class IAM_words(D.Dataset):
         imgs = list()
         img_widths = list()
         labels = list()
-
         for word in words:
             wid, idx = word[0].split(',')
             img, img_width = self.read_image_single(idx)
@@ -99,7 +110,7 @@ class IAM_words(D.Dataset):
         final_wid = wid_idx_num
         num_imgs = len(imgs)
         if num_imgs >= EXTRA_CHANNEL:
-            final_img = np.stack(imgs[:EXTRA_CHANNEL], axis=0) # 64, h, w
+            final_img = np.stack(imgs[:EXTRA_CHANNEL], axis=0)  # 64, h, w
             final_idx = idxs[:EXTRA_CHANNEL]
             final_img_width = img_widths[:EXTRA_CHANNEL]
             final_label = labels[:EXTRA_CHANNEL]
@@ -118,7 +129,7 @@ class IAM_words(D.Dataset):
             final_img = np.stack(final_img, axis=0)
 
         _id = np.random.randint(EXTRA_CHANNEL)
-        img_xt = final_img[_id:_id+1]
+        img_xt = final_img[_id:_id + 1]
         if self.oov:
             label_xt = np.random.choice(text_corpus)
             label_xt = np.array(self.label_padding(label_xt, num_tokens))
@@ -147,8 +158,8 @@ class IAM_words(D.Dataset):
             return np.zeros((IMG_HEIGHT, IMG_WIDTH)), 0
 
         rate = float(IMG_HEIGHT) / img.shape[0]
-        img = cv2.resize(img, (int(img.shape[1]*rate)+1, IMG_HEIGHT), interpolation=cv2.INTER_CUBIC)
-        img = img/255. # 0-255 -> 0-1
+        img = cv2.resize(img, (int(img.shape[1] * rate) + 1, IMG_HEIGHT), interpolation=cv2.INTER_CUBIC)
+        img = img / 255.  # 0-255 -> 0-1
 
         img = 1. - img
         img_width = img.shape[-1]
@@ -169,19 +180,19 @@ class IAM_words(D.Dataset):
     def label_padding(self, labels, num_tokens):
         new_label_len = []
         ll = [letter2index[i] for i in labels]
-        new_label_len.append(len(ll)+2)
+        new_label_len.append(len(ll) + 2)
         ll = np.array(ll) + num_tokens
         ll = list(ll)
         ll = [tokens['GO_TOKEN']] + ll + [tokens['END_TOKEN']]
         num = self.output_max_len - len(ll)
         if not num == 0:
-            ll.extend([tokens['PAD_TOKEN']] * num) # replace PAD_TOKEN
+            ll.extend([tokens['PAD_TOKEN']] * num)  # replace PAD_TOKEN
         return ll
+
 
 def loadData(oov):
     gt_tr = src
     gt_te = tar
-
     with open(gt_tr, 'r') as f_tr:
         data_tr = f_tr.readlines()
         data_tr = [i.strip().split(' ') for i in data_tr]
@@ -218,10 +229,12 @@ def loadData(oov):
     data_test = IAM_words(new_te_dict, oov)
     return data_train, data_test
 
+
 def create_pairs(ddict):
     num = len(ddict.keys())
     label2wid = list(zip(range(num), ddict.keys()))
     print(label2wid)
+
 
 if __name__ == '__main__':
     pass
