@@ -50,7 +50,7 @@ lr_gamma = 0.5
 START_TEST = 1e4 # 1e4: never run test 0: run test from beginning
 FREEZE = False
 freeze_milestone = [65, 90]
-EARLY_STOP_EPOCH = 30 # None: no early stopping
+EARLY_STOP_EPOCH = None # None: no early stopping
 HIDDEN_SIZE_ENC = 512
 HIDDEN_SIZE_DEC = 512 # model/encoder.py SUM_UP=False: enc:dec = 1:2  SUM_UP=True: enc:dec = 1:1
 CON_STEP = None # CON_STEP = 4 # encoder output squeeze step
@@ -288,7 +288,7 @@ def main(train_loader, valid_loader, test_loader):
 
     #scheduler = optim.lr_scheduler.StepLR(opt, step_size=20, gamma=1)
     scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=lr_milestone, gamma=lr_gamma)
-    epochs = 5000000
+    epochs = 5000
     if EARLY_STOP_EPOCH is not None:
         min_loss = 1e3
         min_loss_index = 0
@@ -302,11 +302,11 @@ def main(train_loader, valid_loader, test_loader):
         start_epoch = 0
 
     for epoch in range(start_epoch, epochs):
-        scheduler.step()
         lr = scheduler.get_lr()[0]
         teacher_rate = teacher_force_func(epoch) if TEACHER_FORCING else False
         start = time.time()
         loss = train(train_loader, seq2seq, opt, teacher_rate, epoch)
+        scheduler.step()
         writeLoss(loss, 'train')
         print('epoch %d/%d, loss=%.3f, lr=%.8f, teacher_rate=%.3f, time=%.3f' % (epoch, epochs, loss, lr, teacher_rate, time.time()-start))
 

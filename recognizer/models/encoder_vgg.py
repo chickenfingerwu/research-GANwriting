@@ -12,7 +12,7 @@ cuda = torch.device('cuda')
 DROP_OUT = False
 LSTM = False
 SUM_UP = True
-PRE_TRAIN_VGG = True
+PRE_TRAIN_VGG = False
 
 class Encoder(nn.Module):
     def __init__(self, hidden_size, height, width, bgru, step, flip):

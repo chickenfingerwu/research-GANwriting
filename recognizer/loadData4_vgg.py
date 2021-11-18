@@ -15,13 +15,13 @@ HAY_THRESH = True
 FLIP = False # flip the image
 
 if WORD_LEVEL:
-    OUTPUT_MAX_LEN = 23 # max-word length is 21  This value should be larger than 21+2 (<GO>+groundtruth+<END>)
-    IMG_WIDTH = 1011 # m01-084-07-00 max_length
-    baseDir = '/home/lkang/datasets/iam_final_forms/'
+    OUTPUT_MAX_LEN = 3 # max-word length is 21  This value should be larger than 21+2 (<GO>+groundtruth+<END>)
+    IMG_WIDTH = 128 # m01-084-07-00 max_length
+    baseDir = '/content/research-GANwriting/datasets/ETL_7_and_9/'
 
-    train_set = '/home/lkang/datasets/iam_final_forms/RWTH.iam_word_gt_final.train.thresh'
-    valid_set = '/home/lkang/datasets/iam_final_forms/RWTH.iam_word_gt_final.valid.thresh'
-    test_set = '/home/lkang/datasets/iam_final_forms/RWTH.iam_word_gt_final.test.thresh'
+    train_set = '/content/research-GANwriting/Groundtruth/label_train.txt'
+    valid_set = '/content/research-GANwriting/Groundtruth/label_test.txt'
+    test_set = '/content/research-GANwriting/Groundtruth/label_test.txt'
 else:
     OUTPUT_MAX_LEN = 95 # line-level
     IMG_WIDTH = 2227 # m03-118-05.png max_length
@@ -31,14 +31,23 @@ else:
     valid_set = None
     test_set = None
 
-IMG_HEIGHT = 64
+IMG_HEIGHT = 128
 
 GT_TR = train_set
 GT_VA = valid_set
 GT_TE = test_set
 
+# def labelDictionary():
+#     labels = [' ', '!', '"', '#', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '?', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+#     letter2index = {label: n for n, label in enumerate(labels)}
+#     index2letter = {v: k for k, v in letter2index.items()}
+#     return len(labels), letter2index, index2letter
+
 def labelDictionary():
-    labels = [' ', '!', '"', '#', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '?', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+    labels = set()
+    with open('/content/research-GANwriting/kanji.txt', 'r') as r:
+        for char in r.read():
+            labels.add(char.strip())
     letter2index = {label: n for n, label in enumerate(labels)}
     index2letter = {v: k for k, v in letter2index.items()}
     return len(labels), letter2index, index2letter
@@ -57,7 +66,8 @@ class IAM_words(D.Dataset):
 
     def __getitem__(self, index):
         word = self.file_label[index]
-        img, img_width = self.readImage_keepRatio(word[0], flip=FLIP)
+        fileName = str(word[0].split(',')[-1])
+        img, img_width = self.readImage_keepRatio(fileName, flip=FLIP)
         label, label_mask = self.label_padding(' '.join(word[1:]), num_tokens)
         return word[0], img, img_width, label
         #return {'index_sa': file_name, 'input_sa': in_data, 'output_sa': out_data, 'in_len_sa': in_len, 'out_len_sa': out_data_mask}
@@ -66,14 +76,14 @@ class IAM_words(D.Dataset):
         return len(self.file_label)
 
     def readImage_keepRatio(self, file_name, flip):
-        if HAY_THRESH:
-            file_name, thresh = file_name.split(',')
-            thresh = int(thresh)
-        if WORD_LEVEL:
-            subdir = 'words_from_forms/'
-        else:
-            subdir = 'lines/'
-        url = baseDir + subdir + file_name + '.png'
+        # if HAY_THRESH:
+        #     file_name = file_name.split(',')
+            # thresh = int(thresh)
+        # if WORD_LEVEL:
+        #     subdir = 'words_from_forms/'
+        # else:
+        #     subdir = 'lines/'
+        url = baseDir + file_name + '.png'
         img = cv2.imread(url, 0)
 
         rate = float(IMG_HEIGHT) / img.shape[0]
